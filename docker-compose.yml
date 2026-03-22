@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  redpanda:
+    # Upgrading to a slightly newer stable version is recommended
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.1 
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      # Door 1: Internal (Docker), Door 2: External (Your Mac)
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # This tells the Console to use 'redpanda:9092' and Python to use 'localhost:19092'
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "9092:9092"   # Keep this for internal bridge
+      - "19092:19092" # This is the door for your Python script
+      - "9644:9644"   # The Admin API port for the Console
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda-console
+    environment:
+      KAFKA_BROKERS: "redpanda:9092"
+      REDPANDA_ADMINAPI_ENABLED: "true"
+      REDPANDA_ADMINAPI_URLS: "http://redpanda:9644"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redpanda
